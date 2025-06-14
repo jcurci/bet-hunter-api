@@ -18,7 +18,6 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
-    private String login;
     private String password;
     private String name;
     private String email;
@@ -26,8 +25,7 @@ public class User implements UserDetails {
     private int points;
     private int placement;
 
-    public User(String login, String password, String name, String email, String cellphone) {
-        this.login = login;
+    public User(String email, String password, String name, String cellphone) {
         this.password = password;
         this.name = name;
         this.email = email;
@@ -48,7 +46,7 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return login;
+        return email;
     }
 
     @Override
