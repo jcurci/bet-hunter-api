@@ -18,7 +18,7 @@ public class ControllerArticle {
     private ServiceArticle serviceArticle;
 
     @PostMapping
-    public ResponseEntity createArticle(@RequestBody ArticleRequestCreate dto) {
+    public ResponseEntity<?> createArticle(@RequestBody ArticleRequestCreate dto) {
         return ResponseEntity.status(201).body(serviceArticle.createArticle(dto));
     }
 
@@ -27,7 +27,7 @@ public class ControllerArticle {
         return ResponseEntity.ok(serviceArticle
                 .findAll()
                 .stream()
-                .map(article -> new Article())
+                .map(article -> new Article(article.getTitle()))
                 .collect(Collectors.toList()));
     }
 }
