@@ -21,17 +21,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("auth")
 public class ControllerAuthentication {
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
-    @Autowired
-    private RepositoryUser repositoryUser;
-    @Autowired
-    private ServiceToken serviceToken;
+    private final RepositoryUser repositoryUser;
+    private final ServiceToken serviceToken;
+    private final AuthenticationManager authenticationManager;
+
+    public ControllerAuthentication(
+            RepositoryUser repositoryUser,
+            ServiceToken serviceToken,
+            AuthenticationManager authenticationManager) {
+        this.repositoryUser = repositoryUser;
+        this.serviceToken = serviceToken;
+        this.authenticationManager = authenticationManager;
+    }
 
     @PostMapping("/login")
     public ResponseEntity login(@RequestBody @Valid AuthenticationRequestLogin dto) {
         var usernamePassword = new UsernamePasswordAuthenticationToken(dto.email(), dto.password());
-        var auth = this.authenticationManager.authenticate(usernamePassword);
+        var auth = authenticationManager.authenticate(usernamePassword);
 
         var token = serviceToken.generateToken((User) auth.getPrincipal());
 
@@ -40,14 +46,13 @@ public class ControllerAuthentication {
 
     @PostMapping("/register")
     public ResponseEntity register(@RequestBody @Valid AuthenticationRequestRegister dto) {
-        if (repositoryUser.findByEmail(dto.email()) != null) return ResponseEntity.badRequest().build();
+        if (repositoryUser.findByEmail(dto.email()).isPresent()) return ResponseEntity.badRequest().build();
 
         String encryptedPassword = new BCryptPasswordEncoder().encode(dto.password());
         User user = new User(dto.email(), encryptedPassword, dto.name(),
                 dto.cellphone());
 
         repositoryUser.save(user);
-
         return ResponseEntity.ok().build();
     }
 }
