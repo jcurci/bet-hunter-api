@@ -5,8 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+@Entity
 @Table(name = "article")
-@Entity(name = "article")
 @NoArgsConstructor
 @Getter
 @Setter
@@ -20,4 +20,5 @@ public class Article {
     public Article(String title) {
         this.title = title;
     }
+
 }
