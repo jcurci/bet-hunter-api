@@ -3,16 +3,19 @@ package com.bethunter.bethunter_api.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 
+@Entity
 @Table(name = "users")
-@Entity(name = "users")
 @NoArgsConstructor
 @Getter
+@Setter
 public class User implements UserDetails {
 
     @Id
@@ -24,6 +27,7 @@ public class User implements UserDetails {
     private String cellphone;
     private int points;
     private int placement;
+    private BigDecimal money;
 
     public User(String email, String password, String name, String cellphone) {
         this.password = password;
@@ -32,6 +36,7 @@ public class User implements UserDetails {
         this.cellphone = cellphone;
         this.points = 0;
         this.placement = 0;
+        this.money = BigDecimal.ZERO;
     }
 
     @Override
