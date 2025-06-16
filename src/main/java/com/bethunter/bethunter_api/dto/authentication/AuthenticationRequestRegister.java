@@ -1,4 +1,4 @@
-package com.bethunter.bethunter_api.dto;
+package com.bethunter.bethunter_api.dto.authentication;
 
 import jakarta.validation.constraints.NotBlank;
 
