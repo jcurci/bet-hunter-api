@@ -29,6 +29,11 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/articles").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/lessons").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/topics").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/questions").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/alternatives").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
