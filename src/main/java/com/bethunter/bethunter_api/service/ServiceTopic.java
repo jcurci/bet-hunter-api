@@ -1,8 +1,11 @@
 package com.bethunter.bethunter_api.service;
 
+import com.bethunter.bethunter_api.dto.question.QuestionRequestUpdate;
 import com.bethunter.bethunter_api.dto.topic.TopicProgressResponse;
 import com.bethunter.bethunter_api.dto.topic.TopicRequestCreate;
+import com.bethunter.bethunter_api.dto.topic.TopicRequestUpdate;
 import com.bethunter.bethunter_api.infra.security.ServiceToken;
+import com.bethunter.bethunter_api.model.Question;
 import com.bethunter.bethunter_api.model.Topic;
 import com.bethunter.bethunter_api.model.User;
 import com.bethunter.bethunter_api.repository.RepositoryLesson;
@@ -14,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ServiceTopic {
@@ -40,6 +44,36 @@ public class ServiceTopic {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    public List<Topic> findAll() {
+        return repositoryTopic.findAll();
+    }
+
+    public Optional<Topic> findById(String id) {
+        return repositoryTopic.findById(id);
+    }
+
+    public Optional<Topic> update(String id, TopicRequestUpdate dto) {
+        var lesson = repositoryLesson.findById(dto.id_lesson());
+        if (lesson.isPresent()) {
+            repositoryTopic.findById(id)
+                    .map(topic -> {
+                        topic.setLesson(lesson.get());
+                        return repositoryTopic.save(topic);
+                    });
+        }
+
+        return null;
+    }
+
+    public boolean delete(String id) {
+        if (repositoryLesson.existsById(id)) {
+            repositoryLesson.deleteById(id);
+            return true;
+        }
+
+        return false;
     }
 
     public List<Topic> findAllByLessonId(String id) {

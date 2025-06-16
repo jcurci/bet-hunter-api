@@ -1,10 +1,8 @@
 package com.bethunter.bethunter_api.service;
 
 import com.bethunter.bethunter_api.dto.alternative.AlternativeQuizzResponse;
-import com.bethunter.bethunter_api.dto.question.QuestionAnswerRequest;
-import com.bethunter.bethunter_api.dto.question.QuestionQuizzResponse;
-import com.bethunter.bethunter_api.dto.question.QuestionRequestCreate;
-import com.bethunter.bethunter_api.dto.question.QuestionResponse;
+import com.bethunter.bethunter_api.dto.alternative.AlternativeRequestUpdate;
+import com.bethunter.bethunter_api.dto.question.*;
 import com.bethunter.bethunter_api.dto.useranswer.UserAnswerResponse;
 import com.bethunter.bethunter_api.infra.security.ServiceToken;
 import com.bethunter.bethunter_api.model.Alternative;
@@ -17,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ServiceQuestion {
@@ -48,6 +47,38 @@ public class ServiceQuestion {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    public List<Question> findAll() {
+        return repositoryQuestion.findAll();
+    }
+
+    public Optional<Question> findById(String id) {
+        return repositoryQuestion.findById(id);
+    }
+
+    public Optional<Question> update(String id, QuestionRequestUpdate dto) {
+        var topic = repositoryTopic.findById(dto.id_topic());
+        if (topic.isPresent()) {
+            repositoryQuestion.findById(id)
+                    .map(question -> {
+                        question.setTopic(topic.get());
+                        question.setQuestionNumber(dto.question_number());
+                        question.setStatement(dto.statement());
+                        return repositoryQuestion.save(question);
+                    });
+        }
+
+        return null;
+    }
+
+    public boolean delete(String id) {
+        if (repositoryQuestion.existsById(id)) {
+            repositoryQuestion.deleteById(id);
+            return true;
+        }
+
+        return false;
     }
 
     public ResponseEntity<List<QuestionQuizzResponse>> findUnansweredQuestions(String token, String idTopic) {

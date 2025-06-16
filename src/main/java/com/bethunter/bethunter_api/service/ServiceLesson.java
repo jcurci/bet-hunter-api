@@ -1,6 +1,8 @@
 package com.bethunter.bethunter_api.service;
 
+import com.bethunter.bethunter_api.dto.alternative.AlternativeRequestUpdate;
 import com.bethunter.bethunter_api.dto.lesson.LessonRequestCreate;
+import com.bethunter.bethunter_api.dto.lesson.LessonRequestUpdate;
 import com.bethunter.bethunter_api.dto.lesson.LessonUserProgressDTO;
 import com.bethunter.bethunter_api.infra.security.ServiceToken;
 import com.bethunter.bethunter_api.model.*;
@@ -69,5 +71,24 @@ public class ServiceLesson {
         }).toList();
 
         return ResponseEntity.ok(result);
+    }
+
+    public Optional<Lesson> update(String id, LessonRequestUpdate dto) {
+        repositoryLesson.findById(id)
+                .map(lesson -> {
+                    lesson.setTitle(dto.title());
+                    return repositoryLesson.save(lesson);
+                });
+
+        return null;
+    }
+
+    public boolean delete(String id) {
+        if (repositoryLesson.existsById(id)) {
+            repositoryLesson.deleteById(id);
+            return true;
+        }
+
+        return false;
     }
 }
