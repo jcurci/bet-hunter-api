@@ -6,7 +6,6 @@ CREATE TABLE lesson(
 CREATE TABLE topic(
     id varchar(36) PRIMARY KEY,
     id_lesson varchar(36) NOT NULL,
-    topic_number INT NOT NULL,
     FOREIGN KEY (id_lesson) references lesson(id)
 );
 
@@ -18,7 +17,7 @@ CREATE TABLE question(
     FOREIGN KEY (id_topic) references topic(id)
 );
 
-CREATE TABLE alternatives(
+CREATE TABLE alternative(
     id varchar(36) PRIMARY KEY,
     id_question varchar(36) NOT NULL,
     text varchar(50) NOT NULL,
@@ -26,7 +25,7 @@ CREATE TABLE alternatives(
     FOREIGN KEY (id_question) references question(id)
 );
 
-CREATE TABLE user_answers (
+CREATE TABLE user_answer (
     id varchar(36) PRIMARY KEY,
     id_user varchar(36) NOT NULL,
     id_question varchar(36) NOT NULL,
@@ -34,7 +33,7 @@ CREATE TABLE user_answers (
     correct BOOL DEFAULT NULL,
     FOREIGN KEY (id_user) REFERENCES users(id),
     FOREIGN KEY (id_question) REFERENCES question(id),
-    FOREIGN KEY (id_alternative) REFERENCES alternatives(id)
+    FOREIGN KEY (id_alternative) REFERENCES alternative(id)
 );
 
 
@@ -52,8 +51,8 @@ CREATE TABLE user_progress_topic(
     id varchar(36) PRIMARY KEY,
     id_user varchar(36) NOT NULL,
     id_topic varchar(36) NOT NULL,
-    id_question varchar(36) NOT NULL,
     id_actual_question varchar(36) NULL,
+    completed BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (id_user) references users(id),
     FOREIGN KEY (id_topic) references topic(id),
     FOREIGN KEY (id_actual_question) references question(id)
