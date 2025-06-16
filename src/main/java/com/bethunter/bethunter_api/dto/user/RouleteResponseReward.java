@@ -1,4 +1,4 @@
-package com.bethunter.bethunter_api.dto;
+package com.bethunter.bethunter_api.dto.user;
 
 import java.math.BigDecimal;
 
