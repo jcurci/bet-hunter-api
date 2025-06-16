@@ -18,7 +18,7 @@ public class ControllerAI {
     @Autowired
     private CallApi callApi;
 
-    @GetMapping()
+    @GetMapping
     public ResponseEntity<?> askAI(@RequestBody AiRequestText aiRequestText) throws IOException, InterruptedException {
         return ResponseEntity.ok(callApi.getAnalysisOfText(aiRequestText.text()));
     }
