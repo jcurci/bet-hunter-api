@@ -40,7 +40,8 @@ public class ServiceAuthentication {
     }
 
     public ResponseEntity<?> register(AuthenticationRequestRegister dto) {
-        if (repositoryUser.findByEmail(dto.email()).isPresent()) return ResponseEntity.badRequest().build();
+        if (repositoryUser.findByEmail(dto.email()).isPresent()) return ResponseEntity.badRequest().body("Email already registered");
+        if (repositoryUser.findByCellphone(dto.cellphone()).isPresent()) return ResponseEntity.badRequest().body("Phone already registered");
 
         String encryptedPassword = new BCryptPasswordEncoder().encode(dto.password());
         User user = new User(dto.email(), encryptedPassword, dto.name(),
@@ -54,7 +55,7 @@ public class ServiceAuthentication {
     public ResponseEntity<?> changePassword(String token, AuthenticationRequestPasswordChange dto) {
         var email = serviceToken.validateToken(token.replace("Bearer ", ""));
         if (email.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().body("Invalid or missing token");
         }
 
         User user = repositoryUser.findByEmail(email).orElseThrow(() -> new UserNotFound());
