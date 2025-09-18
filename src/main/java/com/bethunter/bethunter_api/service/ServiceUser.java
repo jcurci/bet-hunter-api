@@ -8,7 +8,6 @@ import com.bethunter.bethunter_api.repository.RepositoryUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -55,7 +54,6 @@ public class ServiceUser {
         return false;
     }
 
-    @GetMapping
     public ResponseEntity<?> spinRoulete(String token) {
         var email = serviceToken.validateToken(token.replace("Bearer ", ""));
         if (email.isEmpty()) {
