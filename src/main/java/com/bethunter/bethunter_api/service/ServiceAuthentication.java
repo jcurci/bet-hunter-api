@@ -4,6 +4,7 @@ import com.bethunter.bethunter_api.dto.authentication.AuthenticationRequestLogin
 import com.bethunter.bethunter_api.dto.authentication.AuthenticationRequestPasswordChange;
 import com.bethunter.bethunter_api.dto.authentication.AuthenticationRequestRegister;
 import com.bethunter.bethunter_api.dto.authentication.LoginResponse;
+import com.bethunter.bethunter_api.exception.UserNotFound;
 import com.bethunter.bethunter_api.infra.security.ServiceToken;
 import com.bethunter.bethunter_api.model.User;
 import com.bethunter.bethunter_api.repository.RepositoryUser;
@@ -56,7 +57,7 @@ public class ServiceAuthentication {
             return ResponseEntity.notFound().build();
         }
 
-        User user = repositoryUser.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = repositoryUser.findByEmail(email).orElseThrow(() -> new UserNotFound());
 
         if (!passwordEncoder.matches(dto.current_password(), user.getPassword())) {
             return ResponseEntity.badRequest().body("Wrong password");
