@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 
 @RestController
@@ -20,34 +19,26 @@ public class ControllerUser {
 
     @GetMapping
     public ResponseEntity<List<UserResponse>> findAll() {
-        return ResponseEntity.ok(serviceUser.findAll().stream()
-                .map(user -> {
-                    return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getCellphone(),
-                            user.getMoney(), user.getPoints());
-                }).collect(Collectors.toList()));
+        return ResponseEntity.ok(serviceUser.findAll());
     }
 
     @GetMapping("{id}")
     public ResponseEntity<UserResponse> findById(@PathVariable String id) {
         return serviceUser.findById(id)
-                .map(user -> {
-                    return ResponseEntity.status(200).body(new UserResponse(user.getId(), user.getEmail(),
-                            user.getName(), user.getCellphone(), user.getMoney(), user.getPoints()));
-                }).orElse(ResponseEntity.notFound().build());
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("{id}")
     public ResponseEntity<UserResponse> updateUser(@PathVariable String id, UserRequestUpdate dto) {
         return serviceUser.update(id, dto)
-                .map(user -> {
-                    return ResponseEntity.status(200).body(new UserResponse(user.getId(), user.getEmail(),
-                            user.getName(), user.getCellphone(), user.getMoney(), user.getPoints()));
-                }).orElse(ResponseEntity.notFound().build());
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
-        boolean result = serviceUser.deleteById(id);
+        boolean result = serviceUser.delete(id);
 
         if (result) {
             return ResponseEntity.noContent().build();
@@ -58,7 +49,6 @@ public class ControllerUser {
 
     @GetMapping("roulete")
     public ResponseEntity<?> spinRoulete(@RequestHeader(name = "Authorization") String token) {
-        return serviceUser.spinRoulete(token);
+        return ResponseEntity.ok(serviceUser.spinRoulete(token));
     }
-
 }
