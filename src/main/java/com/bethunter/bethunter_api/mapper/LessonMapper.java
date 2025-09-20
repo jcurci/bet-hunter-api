@@ -3,7 +3,7 @@ package com.bethunter.bethunter_api.mapper;
 import com.bethunter.bethunter_api.dto.lesson.LessonRequestCreate;
 import com.bethunter.bethunter_api.dto.lesson.LessonRequestUpdate;
 import com.bethunter.bethunter_api.dto.lesson.LessonUserProgressDTO;
-import com.bethunter.bethunter_api.dto.lesson.LessonUserResponse;
+import com.bethunter.bethunter_api.dto.lesson.LessonResponse;
 import com.bethunter.bethunter_api.model.Lesson;
 import org.springframework.stereotype.Component;
 
@@ -23,9 +23,10 @@ public class LessonMapper {
         }
     }
 
-    public LessonUserResponse toUserResponse(Lesson lesson) {
+    public LessonResponse toUserResponse(Lesson lesson) {
         if (lesson == null) return null;
-        return new LessonUserResponse(
+        return new LessonResponse(
+                lesson.getId(),
                 lesson.getTitle()
         );
     }
