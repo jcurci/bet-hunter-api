@@ -1,14 +1,15 @@
 package com.bethunter.bethunter_api.service;
 
-import com.bethunter.bethunter_api.dto.alternative.AlternativeRequestUpdate;
 import com.bethunter.bethunter_api.dto.lesson.LessonRequestCreate;
 import com.bethunter.bethunter_api.dto.lesson.LessonRequestUpdate;
 import com.bethunter.bethunter_api.dto.lesson.LessonUserProgressDTO;
-import com.bethunter.bethunter_api.infra.security.ServiceToken;
-import com.bethunter.bethunter_api.model.*;
+import com.bethunter.bethunter_api.dto.lesson.LessonResponse;
+import com.bethunter.bethunter_api.mapper.LessonMapper;
+import com.bethunter.bethunter_api.model.Lesson;
+import com.bethunter.bethunter_api.model.User;
 import com.bethunter.bethunter_api.repository.*;
+import com.bethunter.bethunter_api.infra.security.ServiceToken;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -32,22 +33,31 @@ public class ServiceLesson {
     @Autowired
     private RepositoryUserProgressTopic repositoryUserProgressTopic;
 
-    public Lesson createLesson(LessonRequestCreate dto) {
-        return repositoryLesson.save(new Lesson(dto.title()));
+    @Autowired
+    private LessonMapper lessonMapper;
+
+    public LessonResponse createLesson(LessonRequestCreate dto) {
+        Lesson lesson = lessonMapper.toEntity(dto);
+        Lesson saved = repositoryLesson.save(lesson);
+        return lessonMapper.toUserResponse(saved);
     }
 
-    public List<Lesson> findAll() {
-        return repositoryLesson.findAll();
+    public List<LessonResponse> findAll() {
+        return repositoryLesson.findAll()
+                .stream()
+                .map(lessonMapper::toUserResponse)
+                .toList();
     }
 
-    public Optional<Lesson> findById(String id) {
-        return repositoryLesson.findById(id);
+    public Optional<LessonResponse> findById(String id) {
+        return repositoryLesson.findById(id)
+                .map(lessonMapper::toUserResponse);
     }
 
-    public ResponseEntity<List<LessonUserProgressDTO>> findUserLessons(String token) {
+    public List<LessonUserProgressDTO> findUserLessons(String token) {
         var email = serviceToken.validateToken(token.replace("Bearer ", ""));
         if (email.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            throw new RuntimeException("Invalid token");
         }
 
         User user = repositoryUser.findByEmail(email)
@@ -55,32 +65,20 @@ public class ServiceLesson {
 
         List<Lesson> lessons = repositoryLesson.findAll();
 
-        List<LessonUserProgressDTO> result = lessons.stream().map(lesson -> {
+        return lessons.stream().map(lesson -> {
             int totalTopics = repositoryTopic.countTopicsByLessonId(lesson.getId());
             int completedTopics = repositoryUserProgressTopic.countCompletedTopics(user.getId(), lesson.getId());
-
-            double progress = totalTopics == 0 ? 0 : (completedTopics * 100.0 / totalTopics);
-
-            return new LessonUserProgressDTO(
-                    lesson.getId(),
-                    lesson.getTitle(),
-                    totalTopics,
-                    completedTopics,
-                    Math.round(progress * 100.0) / 100.0
-            );
+            return lessonMapper.toUserProgressDTO(lesson, totalTopics, completedTopics);
         }).toList();
-
-        return ResponseEntity.ok(result);
     }
 
-    public Optional<Lesson> update(String id, LessonRequestUpdate dto) {
-        repositoryLesson.findById(id)
+    public Optional<LessonResponse> update(String id, LessonRequestUpdate dto) {
+        return repositoryLesson.findById(id)
                 .map(lesson -> {
-                    lesson.setTitle(dto.title());
-                    return repositoryLesson.save(lesson);
+                    lessonMapper.updateEntity(lesson, dto);
+                    Lesson updated = repositoryLesson.save(lesson);
+                    return lessonMapper.toUserResponse(updated);
                 });
-
-        return null;
     }
 
     public boolean delete(String id) {
@@ -88,7 +86,6 @@ public class ServiceLesson {
             repositoryLesson.deleteById(id);
             return true;
         }
-
         return false;
     }
 }
