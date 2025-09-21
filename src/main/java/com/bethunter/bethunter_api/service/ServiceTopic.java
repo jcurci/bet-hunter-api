@@ -1,11 +1,14 @@
 package com.bethunter.bethunter_api.service;
 
-import com.bethunter.bethunter_api.dto.question.QuestionRequestUpdate;
 import com.bethunter.bethunter_api.dto.topic.TopicProgressResponse;
 import com.bethunter.bethunter_api.dto.topic.TopicRequestCreate;
 import com.bethunter.bethunter_api.dto.topic.TopicRequestUpdate;
+import com.bethunter.bethunter_api.dto.topic.TopicResponse;
+import com.bethunter.bethunter_api.exception.InvalidToken;
+import com.bethunter.bethunter_api.exception.UserNotFound;
 import com.bethunter.bethunter_api.infra.security.ServiceToken;
-import com.bethunter.bethunter_api.model.Question;
+import com.bethunter.bethunter_api.mapper.TopicMapper;
+import com.bethunter.bethunter_api.model.Lesson;
 import com.bethunter.bethunter_api.model.Topic;
 import com.bethunter.bethunter_api.model.User;
 import com.bethunter.bethunter_api.repository.RepositoryLesson;
@@ -37,67 +40,75 @@ public class ServiceTopic {
     @Autowired
     private RepositoryUserProgressTopic repositoryUserProgressTopic;
 
-    public ResponseEntity<Topic> createTopic(TopicRequestCreate dto) {
-        var lesson = repositoryLesson.findById(dto.id_lesson());
-        if (lesson.isPresent()) {
-            return ResponseEntity.status(201).body(repositoryTopic.save(new Topic(lesson.get())));
-        } else {
+    @Autowired
+    private TopicMapper topicMapper;
+
+    public ResponseEntity<TopicResponse> createTopic(TopicRequestCreate dto) {
+        Optional<Lesson> lesson = repositoryLesson.findById(dto.id_lesson());
+
+        if (lesson.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
+        Topic topic = topicMapper.toEntity(dto, lesson.get());
+        Topic saved = repositoryTopic.save(topic);
+
+        return ResponseEntity.status(201).body(topicMapper.toResponseDTO(saved));
     }
 
-    public List<Topic> findAll() {
-        return repositoryTopic.findAll();
+    public List<TopicResponse> findAll() {
+        return repositoryTopic.findAll().stream()
+                .map(topicMapper::toResponseDTO)
+                .toList();
     }
 
-    public Optional<Topic> findById(String id) {
-        return repositoryTopic.findById(id);
+    public Optional<TopicResponse> findById(String id) {
+        return repositoryTopic.findById(id)
+                .map(topicMapper::toResponseDTO);
     }
 
-    public Optional<Topic> update(String id, TopicRequestUpdate dto) {
-        var lesson = repositoryLesson.findById(dto.id_lesson());
-        if (lesson.isPresent()) {
-            repositoryTopic.findById(id)
-                    .map(topic -> {
-                        topic.setLesson(lesson.get());
-                        return repositoryTopic.save(topic);
-                    });
-        }
-
-        return null;
+    public Optional<TopicResponse> update(String id, TopicRequestUpdate dto) {
+        return repositoryLesson.findById(dto.id_lesson())
+                .flatMap(lesson ->
+                        repositoryTopic.findById(id)
+                                .map(topic -> {
+                                    topicMapper.updateEntity(topic, dto, lesson);
+                                    Topic updated = repositoryTopic.save(topic);
+                                    return topicMapper.toResponseDTO(updated);
+                                })
+                );
     }
 
     public boolean delete(String id) {
-        if (repositoryLesson.existsById(id)) {
-            repositoryLesson.deleteById(id);
+        if (repositoryTopic.existsById(id)) {
+            repositoryTopic.deleteById(id);
             return true;
         }
-
         return false;
     }
 
-    public List<Topic> findAllByLessonId(String id) {
-        return repositoryTopic.findAllByLessonId(id);
+    public List<TopicResponse> findAllByLessonId(String id) {
+        return repositoryTopic.findAllByLessonId(id).stream()
+                .map(topicMapper::toResponseDTO)
+                .toList();
     }
 
-    public ResponseEntity<List<TopicProgressResponse>> findLessonTopicsWithUserProgress(String token, String idLesson) {
+    public List<TopicProgressResponse> findLessonTopicsWithUserProgress(String token, String idLesson) {
         var email = serviceToken.validateToken(token.replace("Bearer ", ""));
         if (email.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            throw new InvalidToken();
         }
 
         User user = repositoryUser.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFound());
 
         List<Topic> topics = repositoryTopic.findAllByLessonId(idLesson);
 
-        List<TopicProgressResponse> result = topics.stream().map(topic -> {
+        return topics.stream().map(topic -> {
             boolean completed = repositoryUserProgressTopic
                     .existsByUserIdAndTopicIdAndCompletedTrue(user.getId(), topic.getId());
 
             return new TopicProgressResponse(topic.getId(), topic.getLesson().getId(), completed);
         }).toList();
-
-        return ResponseEntity.ok(result);
     }
 }

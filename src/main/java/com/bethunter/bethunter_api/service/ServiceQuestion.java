@@ -4,7 +4,10 @@ import com.bethunter.bethunter_api.dto.alternative.AlternativeQuizzResponse;
 import com.bethunter.bethunter_api.dto.alternative.AlternativeRequestUpdate;
 import com.bethunter.bethunter_api.dto.question.*;
 import com.bethunter.bethunter_api.dto.useranswer.UserAnswerResponse;
+import com.bethunter.bethunter_api.exception.*;
 import com.bethunter.bethunter_api.infra.security.ServiceToken;
+import com.bethunter.bethunter_api.mapper.AlternativeMapper;
+import com.bethunter.bethunter_api.mapper.QuestionMapper;
 import com.bethunter.bethunter_api.model.Alternative;
 import com.bethunter.bethunter_api.model.Question;
 import com.bethunter.bethunter_api.model.User;
@@ -38,38 +41,44 @@ public class ServiceQuestion {
     @Autowired
     private RepositoryAlternative repositoryAlternative;
 
-    public ResponseEntity<QuestionResponse> createQuestion(QuestionRequestCreate dto) {
-        var topic = repositoryTopic.findById(dto.id_topic());
+    @Autowired
+    private QuestionMapper questionMapper;
 
-        if (topic.isPresent()) {
-            Question question = repositoryQuestion.save(new Question(topic.get(), dto.question_number(), dto.statement()));
-            return ResponseEntity.status(201).body(new QuestionResponse(question.getId(), question.getTopic().getId(), question.getQuestionNumber(), question.getStatement()));
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    @Autowired
+    private AlternativeMapper alternativeMapper;
+
+    public QuestionResponse createQuestion(QuestionRequestCreate dto) {
+        return repositoryTopic.findById(dto.id_topic())
+                .map(topic -> {
+                    Question question = questionMapper.toEntity(dto, topic);
+                    Question saved = repositoryQuestion.save(question);
+                    return questionMapper.toResponseDTO(saved);
+                })
+                .orElseThrow(() -> new TopicNotFound());
+
     }
 
-    public List<Question> findAll() {
-        return repositoryQuestion.findAll();
+    public List<QuestionResponse> findAll() {
+        return repositoryQuestion.findAll().stream()
+                .map(questionMapper::toResponseDTO)
+                .toList();
     }
 
-    public Optional<Question> findById(String id) {
-        return repositoryQuestion.findById(id);
+    public Optional<QuestionResponse> findById(String id) {
+        return repositoryQuestion.findById(id)
+                .map(questionMapper::toResponseDTO);
     }
 
-    public Optional<Question> update(String id, QuestionRequestUpdate dto) {
-        var topic = repositoryTopic.findById(dto.id_topic());
-        if (topic.isPresent()) {
-            repositoryQuestion.findById(id)
-                    .map(question -> {
-                        question.setTopic(topic.get());
-                        question.setQuestionNumber(dto.question_number());
-                        question.setStatement(dto.statement());
-                        return repositoryQuestion.save(question);
-                    });
-        }
-
-        return null;
+    public Optional<QuestionResponse> update(String id, QuestionRequestUpdate dto) {
+        return repositoryTopic.findById(dto.id_topic())
+                .flatMap(topic ->
+                        repositoryQuestion.findById(id)
+                                .map(question -> {
+                                    questionMapper.toEntity(dto, topic, question);
+                                    Question updated = repositoryQuestion.save(question);
+                                    return questionMapper.toResponseDTO(updated);
+                                })
+                );
     }
 
     public boolean delete(String id) {
@@ -81,14 +90,14 @@ public class ServiceQuestion {
         return false;
     }
 
-    public ResponseEntity<List<QuestionQuizzResponse>> findUnansweredQuestions(String token, String idTopic) {
+    public List<QuestionQuizzResponse> findUnansweredQuestions(String token, String idTopic) {
         String email = serviceToken.validateToken(token.replace("Bearer ", ""));
         if (email.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            throw new InvalidToken();
         }
 
         User user = repositoryUser.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFound());
 
         List<Question> allQuestions = repositoryQuestion.findAllByTopicId(idTopic);
 
@@ -98,45 +107,42 @@ public class ServiceQuestion {
                 .map(userAnswer -> userAnswer.getQuestion().getId())
                 .toList();
 
-        List<QuestionQuizzResponse> result = allQuestions.stream()
-                .filter(question -> !answeredQuestionIds.contains(question.getId()))
-                .map(question -> {
-                    List<AlternativeQuizzResponse> alternatives = question.getAlternatives().stream()
+        return allQuestions.stream()
+                .filter(q -> !answeredQuestionIds.contains(q.getId()))
+                .map(q -> {
+                    List<AlternativeQuizzResponse> alternatives = q.getAlternatives().stream()
                             .map(alt -> new AlternativeQuizzResponse(alt.getId(), alt.getText(), alt.isCorrect()))
                             .toList();
                     return new QuestionQuizzResponse(
-                            question.getId(),
-                            question.getQuestionNumber(),
-                            question.getStatement(),
+                            q.getId(),
+                            q.getQuestionNumber(),
+                            q.getStatement(),
                             alternatives
                     );
-                }).toList();
-
-        return ResponseEntity.ok(result);
+                })
+                .toList();
     }
 
-    public ResponseEntity<?> answerQuestion(String token, String id, QuestionAnswerRequest answer) {
+    public UserAnswerResponse answerQuestion(String token, String id, QuestionAnswerRequest answer) {
         String email = serviceToken.validateToken(token.replace("Bearer ", ""));
         if (email.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            throw new InvalidToken();
         }
 
-        User user = repositoryUser.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-        Question question = repositoryQuestion.findById(id).orElseThrow(() -> new RuntimeException("Question not found"));
-        Alternative alternative = repositoryAlternative.findById(answer.id_alternative()).orElseThrow(() -> new RuntimeException("Alternative not found"));
-
-        boolean isCorrect = alternative.isCorrect();
+        User user = repositoryUser.findByEmail(email).orElseThrow(() -> new UserNotFound());
+        Question question = repositoryQuestion.findById(id).orElseThrow(() -> new QuestionNotFound());
+        Alternative alternative = repositoryAlternative.findById(answer.id_alternative()).orElseThrow(() -> new AlternativeNotFound());
 
         boolean alreadyAnswered = repositoryUserAnswer
                 .existsByUserIdAndQuestionId(user.getId(), question.getId());
 
         if (alreadyAnswered) {
-            return ResponseEntity.status(409).body("You already answered this question.");
+            throw new AlreadyAnswered();
         }
 
-        repositoryUserAnswer.save(new UserAnswer(user, question, alternative, isCorrect));
+        repositoryUserAnswer.save(new UserAnswer(user, question, alternative, alternative.isCorrect()));
 
-        return ResponseEntity.ok(new UserAnswerResponse(isCorrect));
+        return new UserAnswerResponse(alternative.isCorrect());
 
     }
 

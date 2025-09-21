@@ -3,6 +3,8 @@ package com.bethunter.bethunter_api.service;
 import com.bethunter.bethunter_api.dto.alternative.AlternativeRequestCreate;
 import com.bethunter.bethunter_api.dto.alternative.AlternativeRequestUpdate;
 import com.bethunter.bethunter_api.dto.alternative.AlternativeResponse;
+import com.bethunter.bethunter_api.exception.QuestionNotFound;
+import com.bethunter.bethunter_api.mapper.AlternativeMapper;
 import com.bethunter.bethunter_api.model.Alternative;
 import com.bethunter.bethunter_api.repository.RepositoryAlternative;
 import com.bethunter.bethunter_api.repository.RepositoryQuestion;
@@ -23,39 +25,41 @@ public class ServiceAlternative {
     @Autowired
     private RepositoryQuestion repositoryQuestion;
 
-    public ResponseEntity<AlternativeResponse> createAlternative(AlternativeRequestCreate dto) {
-        var question = repositoryQuestion.findById(dto.id_question());
-        if (question.isPresent()) {
-            Alternative alternative = repositoryAlternative.save(new Alternative(question.get(), dto.text(), dto.correct()));
+    @Autowired
+    private AlternativeMapper alternativeMapper;
 
-            return ResponseEntity.status(201).body(new AlternativeResponse(alternative.getId(),
-                    alternative.getQuestion().getId(), alternative.getText(), alternative.isCorrect()));
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public AlternativeResponse createAlternative(AlternativeRequestCreate dto) {
+        var question = repositoryQuestion.findById(dto.id_question())
+                .orElseThrow(() -> new QuestionNotFound());
+
+        Alternative alternative = repositoryAlternative.save(
+                alternativeMapper.toEntity(dto, question)
+        );
+
+        return alternativeMapper.toResponseDTO(alternative);
     }
 
-    public List<Alternative> findAll() {
-        return repositoryAlternative.findAll();
+    public List<AlternativeResponse> findAll() {
+        return repositoryAlternative.findAll().stream()
+                .map(alternativeMapper::toResponseDTO)
+                .toList();
     }
 
-    public Optional<Alternative> findById(String id) {
-        return repositoryAlternative.findById(id);
+    public Optional<AlternativeResponse> findById(String id) {
+        return repositoryAlternative.findById(id)
+                .map(alternativeMapper::toResponseDTO);
     }
 
-    public Optional<Alternative> update(String id, AlternativeRequestUpdate dto) {
-        var question = repositoryQuestion.findById(dto.id_question());
-        if (question.isPresent()) {
-            repositoryAlternative.findById(id)
-                    .map(alt -> {
-                        alt.setQuestion(question.get());
-                        alt.setText(dto.text());
-                        alt.setCorrect(dto.correct());
-                        return repositoryAlternative.save(alt);
-                    });
-        }
-
-        return null;
+    public Optional<AlternativeResponse> update(String id, AlternativeRequestUpdate dto) {
+        return repositoryQuestion.findById(dto.id_question())
+                .flatMap(question -> repositoryAlternative.findById(id)
+                        .map(alt -> {
+                            Alternative updated = repositoryAlternative.save(
+                                    alternativeMapper.toEntityUpdate(alt, dto, question)
+                            );
+                            return alternativeMapper.toResponseDTO(updated);
+                        })
+                );
     }
 
     public boolean delete(String id) {
